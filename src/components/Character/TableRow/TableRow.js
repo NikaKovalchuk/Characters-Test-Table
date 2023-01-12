@@ -2,7 +2,7 @@ import * as React from "react";
 import TableCell from "@mui/material/TableCell";
 import MUITableRow from "@mui/material/TableRow";
 
-export default function TableRow({ data }) {
+const TableRow = ({ data }) => {
   const filmsText = data.films.length ? data.films : "Loading...";
 
   return (
@@ -15,3 +15,6 @@ export default function TableRow({ data }) {
     </MUITableRow>
   );
 }
+
+//App rerenders row pretty often (page, filter change). Need to memo them. 
+export default React.memo(TableRow)
