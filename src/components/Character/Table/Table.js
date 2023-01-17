@@ -1,105 +1,93 @@
-import * as React from "react";
+import { getCharactersWithFilms } from "../../../store/character";
+import TableFooter from "../TableFooter";
+import TableHeader from "../TableHeader";
+import TableRow from "../TableRow";
+import {
+  ASC_SORTING_ORDER,
+  DESC_SORTING_ORDER,
+  searchCharacters,
+  sortCharacters,
+} from "./utils";
+import Paper from "@mui/material/Paper";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableContainer from "@mui/material/TableContainer";
-import Paper from "@mui/material/Paper";
-import { useState, useEffect } from "react";
+import * as React from "react";
+import { useState, useCallback } from "react";
 import { useSelector } from "react-redux";
 
-import TableHeader from "../TableHeader";
-import TableRow from "../TableRow";
-import TableFooter from "../TableFooter";
-import { deepSort, filmsForUser } from "./utils";
+const FIRST_PAGE = 0;
+const DEFAULT_PAGE_SIZE = 10;
 
-export default function CharactersTable({ characters: propsCharacters }) {
-  const { pageSize: originPageSize, error } = useSelector(
-    (state) => state.characters
-  );
-  const { films } = useSelector((state) => state.films);
+const CharacterTable = () => {
+  const { error } = useSelector((state) => state.characters);
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(originPageSize);
+  const characters = useSelector(getCharactersWithFilms);
 
-  const [order, setOrder] = useState();
-  const [orderBy, setOrderBy] = useState();
-  const [search, setSearch] = useState("");
-  const [searchRow, setSearchRow] = useState("");
+  const [pagination, setPagination] = useState({
+    currentPage: FIRST_PAGE,
+    pageSize: DEFAULT_PAGE_SIZE,
+  });
 
-  //store a list of characters with added movie objects
-  const [characters, setCharacters] = useState([]);
-  const [filteredUsers, setFilteredUsers] = useState([]);
-  const [currentPageUsers, setCurrentPageUsers] = useState([]);
+  const [sorting, setSorting] = useState({
+    value: ASC_SORTING_ORDER,
+    column: "",
+  });
 
-  //add movie info to character list
-  useEffect(() => {
-    const usersWithFilms = propsCharacters.map((user) => {
-      const newFilms = filmsForUser(user, films);
-      return {
-        ...user,
-        films: newFilms,
-      };
+  const [searching, setSearching] = useState({ value: "", column: "" });
+
+  const handleSorting = (header) => {
+    const isAsc =
+      sorting.column === header && sorting.value === ASC_SORTING_ORDER;
+    setSorting({
+      value: isAsc ? DESC_SORTING_ORDER : ASC_SORTING_ORDER,
+      column: header,
     });
-    setCharacters(usersWithFilms);
-  }, [films, propsCharacters]);
-
-  const handleSearch = (value, row) => {
-    if (value) {
-      setSearch(value);
-      setSearchRow(row);
-    } else {
-      setSearch("");
-      setSearchRow("");
-    }
   };
 
-  const recordsAfterPagingAndSorting = () => {
-    const newUsers = deepSort(filteredUsers, order, orderBy).slice(
-      (currentPage - 1) * pageSize,
-      currentPage * pageSize
+  const resetPagination = () => {
+    setPagination({
+      ...pagination,
+      currentPage: FIRST_PAGE,
+    });
+  };
+
+  const handleSearching = (value, column) => {
+    setSearching({ value, column: value ? column : "" });
+    resetPagination();
+  };
+
+  const handleChangePage = (_, page) => {
+    setPagination({
+      ...pagination,
+      currentPage: page,
+    });
+  };
+
+  const handleRowsPerPageChange = (event) => {
+    setPagination({
+      currentPage: FIRST_PAGE,
+      pageSize: event.target.value,
+    });
+  };
+
+  const getFilteredUsers = useCallback(() => {
+    const sortedCharacterList = sortCharacters(characters, sorting);
+    return searchCharacters(sortedCharacterList, searching);
+  }, [sorting, searching, characters]);
+
+  // don't memo because search value way too random for good caching
+  const filteredUsers = getFilteredUsers();
+
+  const getCurrentPageUsers = useCallback(() => {
+    const searchedCharacterList = getFilteredUsers();
+    return searchedCharacterList.slice(
+      pagination.currentPage * pagination.pageSize,
+      (pagination.currentPage + 1) * pagination.pageSize
     );
+  }, [sorting, searching, pagination, characters]);
 
-    setCurrentPageUsers(newUsers);
-  };
-
-  function handleChangePage(e, page) {
-    setCurrentPage(page + 1);
-  }
-
-  function handleRowsPerPageChange(e) {
-    setPageSize(e.target.value);
-    setCurrentPage(1);
-  }
-
-  useEffect(() => {
-    recordsAfterPagingAndSorting();
-  }, [filteredUsers, order, orderBy, currentPage, pageSize]);
-
-  useEffect(() => {
-    if (search !== "" && searchRow !== "") {
-      setFilteredUsers(
-        characters.filter((user) => {
-          let searchElements = search.toLowerCase().split(",");
-          let includes = true;
-          for (let element of searchElements) {
-            if (element !== "") {
-              includes =
-                includes && user[searchRow].toLowerCase().includes(element);
-            }
-          }
-          return includes;
-        })
-      );
-      setCurrentPage(1);
-    } else {
-      setFilteredUsers(characters);
-    }
-  }, [characters, search, searchRow]);
-
-  const handleSortRequest = (header) => {
-    const isAsc = orderBy === header && order === "asc";
-    setOrder(isAsc ? "desc" : "asc");
-    setOrderBy(header);
-  };
+  const currentPageUsers = getCurrentPageUsers();
 
   return (
     <>
@@ -107,16 +95,16 @@ export default function CharactersTable({ characters: propsCharacters }) {
       <TableContainer component={Paper}>
         {/* inline style to save some time */}
         <Table sx={{ minWidth: 650 }} aria-label="simple table">
-          <TableHeader onClick={handleSortRequest} onSearch={handleSearch} />
+          <TableHeader onSort={handleSorting} onSearch={handleSearching} />
           <TableBody>
             {currentPageUsers.map((row) => (
               <TableRow key={row.name} data={row} />
             ))}
           </TableBody>
           <TableFooter
-            characters={filteredUsers}
-            currentPage={currentPage}
-            pageSize={pageSize}
+            count={filteredUsers.length}
+            currentPage={pagination.currentPage}
+            pageSize={pagination.pageSize}
             handleChangePage={handleChangePage}
             handleRowsPerPageChange={handleRowsPerPageChange}
           />
@@ -124,4 +112,6 @@ export default function CharactersTable({ characters: propsCharacters }) {
       </TableContainer>
     </>
   );
-}
+};
+
+export default CharacterTable;

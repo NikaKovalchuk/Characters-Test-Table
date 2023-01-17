@@ -2,8 +2,6 @@ import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
   characters: [],
-  pageSize: 0,
-  pageNumber: 0,
   error: "",
   isLoading: false,
 };
@@ -16,9 +14,7 @@ const characterSlice = createSlice({
       state.isLoading = true;
     },
     loadCharactersSuccess(state, { payload }) {
-      state.characters = state.characters.concat(payload.characters) || [];
-      state.pageSize = payload.pageSize;
-      state.pageNumber = payload.pageNumber;
+      state.characters = [...state.characters, ...payload.characters];
       state.isLoading = false;
       state.error = "";
     },

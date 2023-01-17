@@ -1,56 +1,59 @@
-import { call, put, takeEvery } from "redux-saga/effects";
-
-import {
-  loadCharacters as loadCharactersAction,
-  loadCharactersSuccess,
-  loadCharactersError,
-} from "../character";
+import { loadCharactersSuccess, loadCharactersError } from "../character";
 import { loadFilms } from "../films";
 import { fetchPeople } from "./api";
+import { call, put, fork } from "redux-saga/effects";
 
-function* loadCharacters() {
+const getUniqFilmsFromCharacters = (characters) => {
+  //store movies in an object to ensure unique entities
+  const films = {};
+
+  //go throw movies of each user to create a complete list of films to fetch
+  characters.forEach((character) => {
+    character.films.forEach((film) => {
+      films[film] = film;
+    });
+  });
+
+  return Object.keys(films);
+};
+
+function* loadCharactersForPage(page) {
   try {
-    let pageSize, pageNumber;
-    let currentPage = 1;
-    let characters = [];
-    //store movies in an object to ensure unique entities
-    let filmList = {};
+    const response = yield call(fetchPeople, page);
+    const characters = response.data.results;
 
-    do {
-      const response = yield call(fetchPeople, currentPage);
-      let newCharacters = response.data.results;
-
-      //go throw movies of each user to create a complete list of films to fetch
-      newCharacters.forEach((user) => {
-        user.films.forEach((film) => {
-          filmList[film] = film;
-        });
-      });
-
-      characters = characters.concat(newCharacters);
-
-      if (!pageNumber)
-        pageNumber = Math.ceil(response.data.count / newCharacters.length);
-      if (!pageSize) pageSize = newCharacters.length;
-
-      currentPage++;
-    } while (currentPage <= pageNumber);
+    const filmUrls = getUniqFilmsFromCharacters(characters);
 
     //fetch films
-    yield put(loadFilms(Object.keys(filmList)));
+    yield put(loadFilms(filmUrls));
 
-    yield put(
-      loadCharactersSuccess({
-        characters: characters,
-        pageSize: pageSize,
-        pageNumber: pageNumber,
-      })
-    );
+    yield put(loadCharactersSuccess({ characters }));
   } catch (e) {
     yield put(loadCharactersError(e));
   }
 }
 
-export function* watchCharacters() {
-  yield takeEvery(loadCharactersAction, loadCharacters);
+export function* loadCharacters() {
+  try {
+    const response = yield call(fetchPeople, 1);
+    const characters = response.data.results;
+
+    const filmUrls = getUniqFilmsFromCharacters(characters);
+
+    //fetch films for first page
+    yield put(loadFilms(filmUrls));
+
+    const pageSize = characters.length;
+    const pageNumber = Math.ceil(response.data.count / pageSize);
+
+    //load other characters
+    //skip first page because it's already loaded, start from page 2
+    for (let page = 2; page <= pageNumber; page++) {
+      yield fork(loadCharactersForPage, page);
+    }
+
+    yield put(loadCharactersSuccess({ characters }));
+  } catch (e) {
+    yield put(loadCharactersError(e));
+  }
 }

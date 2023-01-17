@@ -1,24 +1,21 @@
-import { useSelector } from "react-redux";
-import { useEffect } from "react";
-import { useDispatch } from "react-redux";
-
 import CharactersTable from "./components/Character/Table";
 import Loading from "./components/Loading";
 import { loadCharacters } from "./store/character";
+import { useEffect } from "react";
+import { useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 
 const App = () => {
-  let { characters, isLoading } = useSelector((state) => state.characters);
+  const { isLoading } = useSelector((state) => state.characters);
 
-  let dispatch = useDispatch();
+  const dispatch = useDispatch();
 
   useEffect(() => {
     dispatch(loadCharacters());
   }, [dispatch]);
 
   return (
-    <div className="App">
-      {isLoading ? <Loading /> : <CharactersTable characters={characters} />}
-    </div>
+    <div className="App">{isLoading ? <Loading /> : <CharactersTable />}</div>
   );
 };
 

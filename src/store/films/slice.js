@@ -1,7 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
-  films: [],
+  films: {},
   error: "",
   isLoading: false,
 };
@@ -14,7 +14,7 @@ const filmSlice = createSlice({
       state.isLoading = true;
     },
     loadFilmsSuccess(state, { payload }) {
-      state.films = payload;
+      state.films = { ...state.films, ...payload };
       state.isLoading = false;
       state.error = "";
     },

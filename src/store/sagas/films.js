@@ -1,16 +1,17 @@
-import { call, put, takeEvery } from "redux-saga/effects";
-
-import {
-  loadFilms as loadFilmsAction,
-  loadFilmsSuccess,
-  loadFilmsError,
-} from "../films";
+import { loadFilmsSuccess, loadFilmsError } from "../films";
 import { fetchFilms } from "./api";
+import { call, put, select } from "redux-saga/effects";
 
-function* loadFilms({ payload }) {
+export function* loadFilms({ payload: filmUrls }) {
   try {
-    let results = {};
-    for (let url of payload) {
+    const results = {};
+    const stateFilms = yield select((state) => state.films.films);
+
+    for (let url of filmUrls) {
+      //don't load film if it's already in the system
+      if (url in Object.keys(stateFilms)) {
+        continue;
+      }
       const response = yield call(fetchFilms, url);
       results[url] = response.data;
     }
@@ -19,8 +20,4 @@ function* loadFilms({ payload }) {
   } catch (e) {
     yield put(loadFilmsError(e));
   }
-}
-
-export function* watchFilms() {
-  yield takeEvery(loadFilmsAction, loadFilms);
 }
