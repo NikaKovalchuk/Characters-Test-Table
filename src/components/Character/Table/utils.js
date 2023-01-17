@@ -20,7 +20,7 @@ const descendingComparator = (a, b, sortColumn) => {
 };
 
 const getComparator = (a, b, sortOrder, sortColumn) => {
-  return sortOrder === "desc"
+  return sortOrder === DESC_SORTING_ORDER
     ? descendingComparator(a, b, sortColumn)
     : -descendingComparator(a, b, sortColumn);
 };
@@ -42,18 +42,18 @@ export const searchCharacters = (listToSearch, searching) => {
   const { value, column } = searching;
   if (!value) return listToSearch;
   const filteredCharacters = listToSearch.filter((character) => {
-    let searchSubString = value.toLowerCase().split(", ");
+    let searchSubString = value
+      .toLowerCase()
+      .split(",")
+      .filter((subString) => subString !== "" && subString !== " ");
     // default is true because for logical AND operation we need all items to be true.
     // otherwise we wouldn't achieve needed logic.
     let includes = true;
     for (let subString of searchSubString) {
-      if (subString === "" || subString === " ") {
-        continue;
-      }
       includes =
         includes &&
         character[column].some((item) =>
-          item.toLowerCase().includes(subString)
+          item.toLowerCase().includes(subString.trim())
         );
     }
     return includes;
